@@ -1,9 +1,16 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 19
+    signingConfigs {
+        release {
+            keyAlias 'omottec'
+            keyPassword 'omottec007'
+            storeFile file('E:/Keystore/omottec.jks')
+            storePassword 'omottec007'
+        }
+    }
+    compileSdkVersion 22
     buildToolsVersion "23.0.1"
-
     defaultConfig {
         applicationId "com.omottec.coolweather"
         minSdkVersion 14
@@ -14,6 +21,7 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
         }
     }
 }
@@ -21,4 +29,5 @@ android {
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
     testCompile 'junit:junit:4.12'
+    compile project(':volley')
 }

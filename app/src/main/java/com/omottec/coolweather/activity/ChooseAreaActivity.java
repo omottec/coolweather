@@ -7,6 +7,7 @@ import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.View;
 import android.view.Window;
 import android.widget.AdapterView;
@@ -16,11 +17,17 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.android.volley.Request;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.StringRequest;
+import com.android.volley.toolbox.Volley;
 import com.omottec.coolweather.R;
 import com.omottec.coolweather.db.CoolWeatherDB;
 import com.omottec.coolweather.model.City;
 import com.omottec.coolweather.model.County;
 import com.omottec.coolweather.model.Province;
+import com.omottec.coolweather.net.HttpManager;
 import com.omottec.coolweather.util.HttpCallbackListener;
 import com.omottec.coolweather.util.HttpUtil;
 import com.omottec.coolweather.util.Utility;
@@ -177,51 +184,42 @@ public class ChooseAreaActivity extends Activity {
 			address = "http://www.weather.com.cn/data/list3/city.xml";
 		}
 		showProgressDialog();
-		HttpUtil.sendHttpRequest(address, new HttpCallbackListener() {
-			@Override
-			public void onFinish(String response) {
-				boolean result = false;
-				if ("province".equals(type)) {
-					result = Utility.handleProvincesResponse(coolWeatherDB,
+		StringRequest request = new StringRequest(Request.Method.GET, address,
+			new Response.Listener<String>() {
+				@Override
+				public void onResponse(String response) {
+					boolean result = false;
+					if ("province".equals(type)) {
+						result = Utility.handleProvincesResponse(coolWeatherDB,
 							response);
-				} else if ("city".equals(type)) {
-					result = Utility.handleCitiesResponse(coolWeatherDB,
+					} else if ("city".equals(type)) {
+						result = Utility.handleCitiesResponse(coolWeatherDB,
 							response, selectedProvince.getId());
-				} else if ("county".equals(type)) {
-					result = Utility.handleCountiesResponse(coolWeatherDB,
+					} else if ("county".equals(type)) {
+						result = Utility.handleCountiesResponse(coolWeatherDB,
 							response, selectedCity.getId());
-				}
-				if (result) {
-					// 通过runOnUiThread()方法回到主线程处理逻辑
-					runOnUiThread(new Runnable() {
-						@Override
-						public void run() {
-							closeProgressDialog();
-							if ("province".equals(type)) {
-								queryProvinces();
-							} else if ("city".equals(type)) {
-								queryCities();
-							} else if ("county".equals(type)) {
-								queryCounties();
-							}
-						}
-					});
-				}
-			}
-
-			@Override
-			public void onError(Exception e) {
-				// 通过runOnUiThread()方法回到主线程处理逻辑
-				runOnUiThread(new Runnable() {
-					@Override
-					public void run() {
-						closeProgressDialog();
-						Toast.makeText(ChooseAreaActivity.this,
-								"加载失败", Toast.LENGTH_SHORT).show();
 					}
-				});
-			}
-		});
+					if (result) {
+						closeProgressDialog();
+						if ("province".equals(type)) {
+							queryProvinces();
+						} else if ("city".equals(type)) {
+							queryCities();
+						} else if ("county".equals(type)) {
+							queryCounties();
+						}
+					}
+				}
+			},
+			new Response.ErrorListener() {
+				@Override
+				public void onErrorResponse(VolleyError error) {
+					closeProgressDialog();
+					Toast.makeText(ChooseAreaActivity.this,
+						"加载失败", Toast.LENGTH_SHORT).show();
+				}
+			});
+		HttpManager.getRequestQueue().add(request);
 	}
 	
 	/**

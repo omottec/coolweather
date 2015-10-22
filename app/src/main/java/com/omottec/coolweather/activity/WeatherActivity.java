@@ -13,7 +13,12 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.android.volley.Request;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.StringRequest;
 import com.omottec.coolweather.R;
+import com.omottec.coolweather.net.HttpManager;
 import com.omottec.coolweather.service.AutoUpdateService;
 import com.omottec.coolweather.util.HttpCallbackListener;
 import com.omottec.coolweather.util.HttpUtil;
@@ -128,40 +133,33 @@ public class WeatherActivity extends Activity implements OnClickListener{
 	 * 根据传入的地址和类型去向服务器查询天气代号或者天气信息。
 	 */
 	private void queryFromServer(final String address, final String type) {
-		HttpUtil.sendHttpRequest(address, new HttpCallbackListener() {
-			@Override
-			public void onFinish(final String response) {
-				if ("countyCode".equals(type)) {
-					if (!TextUtils.isEmpty(response)) {
-						// 从服务器返回的数据中解析出天气代号
-						String[] array = response.split("\\|");
-						if (array != null && array.length == 2) {
-							String weatherCode = array[1];
-							queryWeatherInfo(weatherCode);
+		Request request = new StringRequest(Request.Method.GET, address,
+			new Response.Listener<String>() {
+				@Override
+				public void onResponse(String response) {
+					if ("countyCode".equals(type)) {
+						if (!TextUtils.isEmpty(response)) {
+							// 从服务器返回的数据中解析出天气代号
+							String[] array = response.split("\\|");
+							if (array != null && array.length == 2) {
+								String weatherCode = array[1];
+								queryWeatherInfo(weatherCode);
+							}
 						}
+					} else if ("weatherCode".equals(type)) {
+						// 处理服务器返回的天气信息
+						Utility.handleWeatherResponse(WeatherActivity.this, response);
+						showWeather();
 					}
-				} else if ("weatherCode".equals(type)) {
-					// 处理服务器返回的天气信息
-					Utility.handleWeatherResponse(WeatherActivity.this, response);
-					runOnUiThread(new Runnable() {
-						@Override
-						public void run() {
-							showWeather();
-						}
-					});
 				}
-			}
-
+			},
+			new Response.ErrorListener() {
 			@Override
-			public void onError(Exception e) {
-				runOnUiThread(new Runnable() {
-					@Override
-					public void run() {
-						publishText.setText("同步失败");
-					}
-				});
+			public void onErrorResponse(VolleyError error) {
+				publishText.setText("同步失败");
 			}
 		});
+		HttpManager.getRequestQueue().add(request);
 	}
 	
 	/**
