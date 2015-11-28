@@ -24,6 +24,7 @@ import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
 import com.omottec.coolweather.R;
 import com.omottec.coolweather.db.CoolWeatherDB;
+import com.omottec.coolweather.log.Logger;
 import com.omottec.coolweather.model.City;
 import com.omottec.coolweather.model.County;
 import com.omottec.coolweather.model.Province;
@@ -77,8 +78,15 @@ public class ChooseAreaActivity extends Activity {
 	private boolean isFromWeatherActivity;
 
 	@Override
+	public void onAttachedToWindow() {
+		super.onAttachedToWindow();
+		Logger.logClassAndMethod(this);
+	}
+
+	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+		Logger.logClassAndMethod(this);
 		isFromWeatherActivity = getIntent().getBooleanExtra("from_weather_activity", false);
 		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
 		if (prefs.getBoolean("city_selected", false) && !isFromWeatherActivity) {
@@ -261,4 +269,45 @@ public class ChooseAreaActivity extends Activity {
 		}
 	}
 
+	@Override
+	protected void onStart() {
+		super.onStart();
+		Logger.logClassAndMethod(this);
+	}
+
+	@Override
+	protected void onResume() {
+		super.onResume();
+		Logger.logClassAndMethod(this);
+	}
+
+	@Override
+	protected void onRestart() {
+		super.onRestart();
+		Logger.logClassAndMethod(this);
+	}
+
+	@Override
+	protected void onPause() {
+		super.onPause();
+		Logger.logClassAndMethod(this);
+	}
+
+	@Override
+	protected void onStop() {
+		super.onStop();
+		Logger.logClassAndMethod(this);
+	}
+
+	@Override
+	protected void onDestroy() {
+		super.onDestroy();
+		Logger.logClassAndMethod(this);
+	}
+
+	@Override
+	public void onDetachedFromWindow() {
+		super.onDetachedFromWindow();
+		Logger.logClassAndMethod(this);
+	}
 }
