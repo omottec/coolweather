@@ -15,3 +15,20 @@
 #-keepclassmembers class fqcn.of.javascript.interface.for.webview {
 #   public *;
 #}
+
+-assumenosideeffects public class android.util.Log {
+	public static int v(java.lang.String, java.lang.Object...);
+	public static int d(java.lang.String, java.lang.Object...);
+	public static int i(java.lang.String, java.lang.Object...);
+	public static int w(java.lang.String, java.lang.Object...);
+	public static int e(java.lang.String, java.lang.Object...);
+}
+
+-assumenosideeffects public class com.omottec.coolweather.log.Logger {
+	public static int v(java.lang.String, java.lang.Object...);
+    public static int d(java.lang.String, java.lang.Object...);
+    public static int i(java.lang.String, java.lang.Object...);
+    public static int w(java.lang.String, java.lang.Object...);
+    public static int e(java.lang.String, java.lang.Object...);
+    public static void logClassAndMethod(java.lang.Object);
+}

@@ -42,10 +42,6 @@ public final class Logger {
 
     private static int sLevel = VERBOSE;
 
-    public void setLevel(int level) {
-        sLevel = level;
-    }
-
     private Logger() {}
 
     /**

@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.text.TextUtils;
@@ -35,9 +36,10 @@ import com.omottec.coolweather.util.Utility;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class ChooseAreaActivity extends Activity {
-
+	public static final String TAG = "ChooseAreaActivity";
 	public static final int LEVEL_PROVINCE = 0;
 	public static final int LEVEL_CITY = 1;
 	public static final int LEVEL_COUNTY = 2;
@@ -87,6 +89,8 @@ public class ChooseAreaActivity extends Activity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		Logger.logClassAndMethod(this);
+		Logger.d(TAG, "sdkVersion=" + Build.VERSION.SDK_INT + ", local=" + Locale.getDefault());
+		Log.d(TAG, "sdkVersion=" + Build.VERSION.SDK_INT + ", local=" + Locale.getDefault());
 		isFromWeatherActivity = getIntent().getBooleanExtra("from_weather_activity", false);
 		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
 		if (prefs.getBoolean("city_selected", false) && !isFromWeatherActivity) {
