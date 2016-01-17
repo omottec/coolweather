@@ -1,14 +1,6 @@
 apply plugin: 'com.android.application'
 
 android {
-    signingConfigs {
-        release {
-            keyAlias 'omottec'
-            keyPassword 'omottec007'
-            storeFile file('E:/Keystore/omottec.jks')
-            storePassword 'omottec007'
-        }
-    }
     compileSdkVersion 22
     buildToolsVersion "23.0.1"
     defaultConfig {
@@ -19,9 +11,8 @@ android {
     }
     buildTypes {
         release {
-            minifyEnabled true
+            minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-            signingConfig signingConfigs.release
         }
     }
 }
@@ -29,5 +20,5 @@ android {
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
     testCompile 'junit:junit:4.12'
-    compile project(':volley')
+    compile 'eu.the4thfloor.volley:com.android.volley:2015.05.28'
 }
