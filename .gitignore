@@ -32,3 +32,4 @@ proguard/
 #as
 *.iml
 .idea/
+captures/
