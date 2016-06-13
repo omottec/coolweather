@@ -18,6 +18,8 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.android.volley.AuthFailureError;
+import com.android.volley.NetworkResponse;
 import com.android.volley.Request;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
@@ -34,9 +36,13 @@ import com.omottec.coolweather.util.HttpCallbackListener;
 import com.omottec.coolweather.util.HttpUtil;
 import com.omottec.coolweather.util.Utility;
 
+import org.apache.http.protocol.HTTP;
+
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public class ChooseAreaActivity extends Activity {
 	public static final String TAG = "ChooseAreaActivity";
@@ -79,6 +85,12 @@ public class ChooseAreaActivity extends Activity {
 	 */
 	private boolean isFromWeatherActivity;
 
+	private Response.Listener<String> mListener;
+
+	private Response.ErrorListener mErrorListener;
+
+	private String mType;
+
 	@Override
 	public void onAttachedToWindow() {
 		super.onAttachedToWindow();
@@ -105,6 +117,40 @@ public class ChooseAreaActivity extends Activity {
 		titleText = (TextView) findViewById(R.id.title_text);
 		adapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, dataList);
 		listView.setAdapter(adapter);
+		mListener = new Response.Listener<String>() {
+			@Override
+			public void onResponse(String response) {
+				boolean result = false;
+				if ("province".equals(mType)) {
+					result = Utility.handleProvincesResponse(coolWeatherDB,
+							response);
+				} else if ("city".equals(mType)) {
+					result = Utility.handleCitiesResponse(coolWeatherDB,
+							response, selectedProvince.getId());
+				} else if ("county".equals(mType)) {
+					result = Utility.handleCountiesResponse(coolWeatherDB,
+							response, selectedCity.getId());
+				}
+				if (result) {
+					closeProgressDialog();
+					if ("province".equals(mType)) {
+						queryProvinces();
+					} else if ("city".equals(mType)) {
+						queryCities();
+					} else if ("county".equals(mType)) {
+						queryCounties();
+					}
+				}
+			}
+		};
+		mErrorListener = new Response.ErrorListener() {
+			@Override
+			public void onErrorResponse(VolleyError error) {
+				closeProgressDialog();
+				Toast.makeText(ChooseAreaActivity.this,
+						"加载失败", Toast.LENGTH_SHORT).show();
+			}
+		};
 		coolWeatherDB = CoolWeatherDB.getInstance(this);
 		listView.setOnItemClickListener(new OnItemClickListener() {
 			@Override
@@ -189,6 +235,7 @@ public class ChooseAreaActivity extends Activity {
 	 * 根据传入的代号和类型从服务器上查询省市县数据。
 	 */
 	private void queryFromServer(final String code, final String type) {
+		mType = type;
 		String address;
 		if (!TextUtils.isEmpty(code)) {
 			address = "http://www.weather.com.cn/data/list3/city" + code + ".xml";
@@ -196,41 +243,26 @@ public class ChooseAreaActivity extends Activity {
 			address = "http://www.weather.com.cn/data/list3/city.xml";
 		}
 		showProgressDialog();
-		StringRequest request = new StringRequest(Request.Method.GET, address,
-			new Response.Listener<String>() {
-				@Override
-				public void onResponse(String response) {
-					boolean result = false;
-					if ("province".equals(type)) {
-						result = Utility.handleProvincesResponse(coolWeatherDB,
-							response);
-					} else if ("city".equals(type)) {
-						result = Utility.handleCitiesResponse(coolWeatherDB,
-							response, selectedProvince.getId());
-					} else if ("county".equals(type)) {
-						result = Utility.handleCountiesResponse(coolWeatherDB,
-							response, selectedCity.getId());
+		StringRequest request = new StringRequest(Request.Method.GET, address, mListener, mErrorListener) {
+			@Override
+			protected Response<String> parseNetworkResponse(NetworkResponse response) {
+				try {
+					String contentType = response.headers.get(HTTP.CONTENT_TYPE);
+					Logger.d(TAG, "contentType:" + contentType);
+					if (TextUtils.isEmpty(contentType)) {
+						response.headers.put(HTTP.CONTENT_TYPE, "charset=UTF-8");
+					} else if (!contentType.contains(HTTP.UTF_8)) {
+						StringBuilder sb = new StringBuilder(contentType)
+								.append(HTTP.CHARSET_PARAM)
+								.append(HTTP.UTF_8);
+						response.headers.put(HTTP.CONTENT_TYPE, sb.toString());
 					}
-					if (result) {
-						closeProgressDialog();
-						if ("province".equals(type)) {
-							queryProvinces();
-						} else if ("city".equals(type)) {
-							queryCities();
-						} else if ("county".equals(type)) {
-							queryCounties();
-						}
-					}
+				} catch (Exception e) {
+					e.printStackTrace();
 				}
-			},
-			new Response.ErrorListener() {
-				@Override
-				public void onErrorResponse(VolleyError error) {
-					closeProgressDialog();
-					Toast.makeText(ChooseAreaActivity.this,
-						"加载失败", Toast.LENGTH_SHORT).show();
-				}
-			});
+				return super.parseNetworkResponse(response);
+			}
+		};
 		HttpManager.getRequestQueue().add(request);
 	}
 	
