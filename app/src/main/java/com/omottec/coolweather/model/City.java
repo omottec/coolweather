@@ -1,45 +1,42 @@
 package com.omottec.coolweather.model;
 
-public class City {
+import com.activeandroid.Model;
+import com.activeandroid.annotation.Column;
+import com.activeandroid.annotation.Table;
 
-	private int id;
+@Table(name = "city")
+public class City extends Model {
 
-	private String cityName;
+	@Column(name = "name")
+	private String name;
 
-	private String cityCode;
+	@Column(name = "code")
+	private String code;
 
-	private int provinceId;
+	@Column(name = "province_id")
+	private long provinceId;
 
-	public int getId() {
-		return id;
+	public String getName() {
+		return name;
 	}
 
-	public void setId(int id) {
-		this.id = id;
+	public void setName(String name) {
+		this.name = name;
 	}
 
-	public String getCityName() {
-		return cityName;
+	public String getCode() {
+		return code;
 	}
 
-	public void setCityName(String cityName) {
-		this.cityName = cityName;
+	public void setCode(String code) {
+		this.code = code;
 	}
 
-	public String getCityCode() {
-		return cityCode;
-	}
-
-	public void setCityCode(String cityCode) {
-		this.cityCode = cityCode;
-	}
-
-	public int getProvinceId() {
+	public long getProvinceId() {
 		return provinceId;
 	}
 
-	public void setProvinceId(int provinceId) {
+	public void setProvinceId(long provinceId) {
 		this.provinceId = provinceId;
 	}
-
 }

@@ -18,31 +18,25 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.android.volley.AuthFailureError;
+import com.activeandroid.query.Select;
 import com.android.volley.NetworkResponse;
 import com.android.volley.Request;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
-import com.android.volley.toolbox.Volley;
 import com.omottec.coolweather.R;
-import com.omottec.coolweather.db.CoolWeatherDB;
 import com.omottec.coolweather.log.Logger;
 import com.omottec.coolweather.model.City;
 import com.omottec.coolweather.model.County;
 import com.omottec.coolweather.model.Province;
 import com.omottec.coolweather.net.HttpManager;
-import com.omottec.coolweather.util.HttpCallbackListener;
-import com.omottec.coolweather.util.HttpUtil;
 import com.omottec.coolweather.util.Utility;
 
-import org.apache.http.protocol.HTTP;
+//import org.apache.http.protocol.HTTP;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 
 public class ChooseAreaActivity extends Activity {
 	public static final String TAG = "ChooseAreaActivity";
@@ -54,7 +48,6 @@ public class ChooseAreaActivity extends Activity {
 	private TextView titleText;
 	private ListView listView;
 	private ArrayAdapter<String> adapter;
-	private CoolWeatherDB coolWeatherDB;
 	private List<String> dataList = new ArrayList<String>();
 	/**
 	 * 省列表
@@ -122,14 +115,11 @@ public class ChooseAreaActivity extends Activity {
 			public void onResponse(String response) {
 				boolean result = false;
 				if ("province".equals(mType)) {
-					result = Utility.handleProvincesResponse(coolWeatherDB,
-							response);
+					result = Utility.handleProvincesResponse(response);
 				} else if ("city".equals(mType)) {
-					result = Utility.handleCitiesResponse(coolWeatherDB,
-							response, selectedProvince.getId());
+					result = Utility.handleCitiesResponse(response, selectedProvince.getId());
 				} else if ("county".equals(mType)) {
-					result = Utility.handleCountiesResponse(coolWeatherDB,
-							response, selectedCity.getId());
+					result = Utility.handleCountiesResponse(response, selectedCity.getId());
 				}
 				if (result) {
 					closeProgressDialog();
@@ -151,7 +141,7 @@ public class ChooseAreaActivity extends Activity {
 						"加载失败", Toast.LENGTH_SHORT).show();
 			}
 		};
-		coolWeatherDB = CoolWeatherDB.getInstance(this);
+//		coolWeatherDB = CoolWeatherDB.getInstance(this);
 		listView.setOnItemClickListener(new OnItemClickListener() {
 			@Override
 			public void onItemClick(AdapterView<?> arg0, View view, int index,
@@ -163,7 +153,7 @@ public class ChooseAreaActivity extends Activity {
 					selectedCity = cityList.get(index);
 					queryCounties();
 				} else if (currentLevel == LEVEL_COUNTY) {
-					String countyCode = countyList.get(index).getCountyCode();
+					String countyCode = countyList.get(index).getCode();
 					Intent intent = new Intent(ChooseAreaActivity.this, WeatherActivity.class);
 					intent.putExtra("county_code", countyCode);
 					startActivity(intent);
@@ -178,11 +168,12 @@ public class ChooseAreaActivity extends Activity {
 	 * 查询全国所有的省，优先从数据库查询，如果没有查询到再去服务器上查询。
 	 */
 	private void queryProvinces() {
-		provinceList = coolWeatherDB.loadProvinces();
+		provinceList = new Select().from(Province.class).execute();
+//		provinceList = coolWeatherDB.loadProvinces();
 		if (provinceList.size() > 0) {
 			dataList.clear();
 			for (Province province : provinceList) {
-				dataList.add(province.getProvinceName());
+				dataList.add(province.getName());
 			}
 			adapter.notifyDataSetChanged();
 			listView.setSelection(0);
@@ -197,18 +188,18 @@ public class ChooseAreaActivity extends Activity {
 	 * 查询选中省内所有的市，优先从数据库查询，如果没有查询到再去服务器上查询。
 	 */
 	private void queryCities() {
-		cityList = coolWeatherDB.loadCities(selectedProvince.getId());
+		cityList = new Select().from(City.class).execute();
 		if (cityList.size() > 0) {
 			dataList.clear();
 			for (City city : cityList) {
-				dataList.add(city.getCityName());
+				dataList.add(city.getName());
 			}
 			adapter.notifyDataSetChanged();
 			listView.setSelection(0);
-			titleText.setText(selectedProvince.getProvinceName());
+			titleText.setText(selectedProvince.getName());
 			currentLevel = LEVEL_CITY;
 		} else {
-			queryFromServer(selectedProvince.getProvinceCode(), "city");
+			queryFromServer(selectedProvince.getCode(), "city");
 		}
 	}
 	
@@ -216,18 +207,18 @@ public class ChooseAreaActivity extends Activity {
 	 * 查询选中市内所有的县，优先从数据库查询，如果没有查询到再去服务器上查询。
 	 */
 	private void queryCounties() {
-		countyList = coolWeatherDB.loadCounties(selectedCity.getId());
+		countyList = new Select().from(County.class).execute();
 		if (countyList.size() > 0) {
 			dataList.clear();
 			for (County county : countyList) {
-				dataList.add(county.getCountyName());
+				dataList.add(county.getName());
 			}
 			adapter.notifyDataSetChanged();
 			listView.setSelection(0);
-			titleText.setText(selectedCity.getCityName());
+			titleText.setText(selectedCity.getName());
 			currentLevel = LEVEL_COUNTY;
 		} else {
-			queryFromServer(selectedCity.getCityCode(), "county");
+			queryFromServer(selectedCity.getCode(), "county");
 		}
 	}
 	
@@ -247,15 +238,15 @@ public class ChooseAreaActivity extends Activity {
 			@Override
 			protected Response<String> parseNetworkResponse(NetworkResponse response) {
 				try {
-					String contentType = response.headers.get(HTTP.CONTENT_TYPE);
+					String contentType = response.headers.get("Content-Type");
 					Logger.d(TAG, "contentType:" + contentType);
 					if (TextUtils.isEmpty(contentType)) {
-						response.headers.put(HTTP.CONTENT_TYPE, "charset=UTF-8");
-					} else if (!contentType.contains(HTTP.UTF_8)) {
+						response.headers.put("Content-Type", "charset=UTF-8");
+					} else if (!contentType.contains("UTF-8")) {
 						StringBuilder sb = new StringBuilder(contentType)
-								.append(HTTP.CHARSET_PARAM)
-								.append(HTTP.UTF_8);
-						response.headers.put(HTTP.CONTENT_TYPE, sb.toString());
+								.append("; charset=")
+								.append("UTF-8");
+						response.headers.put("Content-Type", sb.toString());
 					}
 				} catch (Exception e) {
 					e.printStackTrace();
