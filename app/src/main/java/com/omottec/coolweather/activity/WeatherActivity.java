@@ -13,11 +13,13 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.android.volley.NetworkResponse;
 import com.android.volley.Request;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 import com.omottec.coolweather.R;
+import com.omottec.coolweather.log.Logger;
 import com.omottec.coolweather.net.HttpManager;
 import com.omottec.coolweather.service.AutoUpdateService;
 import com.omottec.coolweather.util.HttpCallbackListener;
@@ -60,7 +62,10 @@ public class WeatherActivity extends Activity implements OnClickListener{
 	 * 更新天气按钮
 	 */
 	private Button refreshWeather;
-	
+	private Response.Listener<String> mListener;
+	private Response.ErrorListener mErrorListener;
+	private String mType;
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -77,6 +82,31 @@ public class WeatherActivity extends Activity implements OnClickListener{
 		switchCity = (Button) findViewById(R.id.switch_city);
 		refreshWeather = (Button) findViewById(R.id.refresh_weather);
 		String countyCode = getIntent().getStringExtra("county_code");
+		mListener = new Response.Listener<String>() {
+			@Override
+			public void onResponse(String response) {
+				if ("countyCode".equals(mType)) {
+					if (!TextUtils.isEmpty(response)) {
+						// 从服务器返回的数据中解析出天气代号
+						String[] array = response.split("\\|");
+						if (array != null && array.length == 2) {
+							String weatherCode = array[1];
+							queryWeatherInfo(weatherCode);
+						}
+					}
+				} else if ("weatherCode".equals(mType)) {
+					// 处理服务器返回的天气信息
+					Utility.handleWeatherResponse(WeatherActivity.this, response);
+					showWeather();
+				}
+			}
+		};
+		mErrorListener = new Response.ErrorListener() {
+			@Override
+			public void onErrorResponse(VolleyError error) {
+				publishText.setText("同步失败");
+			}
+		};
 		if (!TextUtils.isEmpty(countyCode)) {
 			// 有县级代号时就去查询天气
 			publishText.setText("同步中...");
@@ -133,32 +163,30 @@ public class WeatherActivity extends Activity implements OnClickListener{
 	 * 根据传入的地址和类型去向服务器查询天气代号或者天气信息。
 	 */
 	private void queryFromServer(final String address, final String type) {
-		Request request = new StringRequest(Request.Method.GET, address,
-			new Response.Listener<String>() {
-				@Override
-				public void onResponse(String response) {
-					if ("countyCode".equals(type)) {
-						if (!TextUtils.isEmpty(response)) {
-							// 从服务器返回的数据中解析出天气代号
-							String[] array = response.split("\\|");
-							if (array != null && array.length == 2) {
-								String weatherCode = array[1];
-								queryWeatherInfo(weatherCode);
-							}
-						}
-					} else if ("weatherCode".equals(type)) {
-						// 处理服务器返回的天气信息
-						Utility.handleWeatherResponse(WeatherActivity.this, response);
-						showWeather();
-					}
-				}
-			},
-			new Response.ErrorListener() {
+		mType = type;
+		Request request = new StringRequest(Request.Method.GET,
+				address,
+				mListener,
+				mErrorListener) {
 			@Override
-			public void onErrorResponse(VolleyError error) {
-				publishText.setText("同步失败");
+			protected Response<String> parseNetworkResponse(NetworkResponse response) {
+				try {
+					String contentType = response.headers.get("Content-Type");
+					if (TextUtils.isEmpty(contentType)) {
+						response.headers.put("Content-Type", "charset=UTF-8");
+					} else if (!contentType.contains("UTF-8")) {
+						StringBuilder sb = new StringBuilder(contentType)
+								.append("; charset=")
+								.append("UTF-8");
+						response.headers.put("Content-Type", sb.toString());
+					}
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+				return super.parseNetworkResponse(response);
 			}
-		});
+		};
+
 		HttpManager.getRequestQueue().add(request);
 	}
 	
