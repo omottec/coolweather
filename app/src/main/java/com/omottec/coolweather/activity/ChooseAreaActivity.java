@@ -120,9 +120,9 @@ public class ChooseAreaActivity extends Activity {
 				if ("province".equals(mType)) {
 					result = Utility.handleProvincesResponse(response);
 				} else if ("city".equals(mType)) {
-					result = Utility.handleCitiesResponse(response, selectedProvince.getId());
+					result = Utility.handleCitiesResponse(response, selectedProvince);
 				} else if ("county".equals(mType)) {
-					result = Utility.handleCountiesResponse(response, selectedCity.getId());
+					result = Utility.handleCountiesResponse(response, selectedCity);
 				}
 				if (result) {
 					closeProgressDialog();
@@ -191,7 +191,8 @@ public class ChooseAreaActivity extends Activity {
 	 * 查询选中省内所有的市，优先从数据库查询，如果没有查询到再去服务器上查询。
 	 */
 	private void queryCities() {
-		cityList = new Select().from(City.class).execute();
+		if (selectedProvince != null)
+			cityList = selectedProvince.getCities();
 		if (cityList.size() > 0) {
 			dataList.clear();
 			for (City city : cityList) {

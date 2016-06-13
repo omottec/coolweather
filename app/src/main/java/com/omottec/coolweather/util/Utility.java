@@ -43,7 +43,7 @@ public class Utility {
 	/**
 	 * 解析和处理服务器返回的市级数据
 	 */
-	public static boolean handleCitiesResponse(String response, long provinceId) {
+	public static boolean handleCitiesResponse(String response, Province province) {
 		if (!TextUtils.isEmpty(response)) {
 			String[] allCities = response.split(",");
 			if (allCities != null && allCities.length > 0) {
@@ -52,7 +52,7 @@ public class Utility {
 					City city = new City();
 					city.setCode(array[0]);
 					city.setName(array[1]);
-					city.setProvinceId(provinceId);
+					city.setProvince(province);
 					city.save();
 					// 将解析出来的数据存储到City表
 //					coolWeatherDB.saveCity(city);
@@ -66,7 +66,7 @@ public class Utility {
 	/**
 	 * 解析和处理服务器返回的县级数据
 	 */
-	public static boolean handleCountiesResponse(String response, long cityId) {
+	public static boolean handleCountiesResponse(String response, City city) {
 		if (!TextUtils.isEmpty(response)) {
 			String[] allCounties = response.split(",");
 			if (allCounties != null && allCounties.length > 0) {
@@ -75,7 +75,7 @@ public class Utility {
 					County county = new County();
 					county.setCode(array[0]);
 					county.setName(array[1]);
-					county.setCityId(cityId);
+					county.setCity(city);
 					county.save();
 					// 将解析出来的数据存储到County表
 //					coolWeatherDB.saveCounty(county);

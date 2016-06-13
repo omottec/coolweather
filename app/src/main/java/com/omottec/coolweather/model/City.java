@@ -14,7 +14,11 @@ public class City extends Model {
 	private String code;
 
 	@Column(name = "province_id")
-	private long provinceId;
+	private Province province;
+
+	public void setCode(String code) {
+		this.code = code;
+	}
 
 	public String getName() {
 		return name;
@@ -28,15 +32,11 @@ public class City extends Model {
 		return code;
 	}
 
-	public void setCode(String code) {
-		this.code = code;
+	public Province getProvince() {
+		return province;
 	}
 
-	public long getProvinceId() {
-		return provinceId;
-	}
-
-	public void setProvinceId(long provinceId) {
-		this.provinceId = provinceId;
+	public void setProvince(Province province) {
+		this.province = province;
 	}
 }

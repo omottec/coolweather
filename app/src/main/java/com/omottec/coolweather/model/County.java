@@ -13,7 +13,7 @@ public class County extends Model {
 	private String code;
 
 	@Column(name = "city_id")
-	private long cityId;
+	private City city;
 
 	public String getName() {
 		return name;
@@ -31,11 +31,11 @@ public class County extends Model {
 		this.code = code;
 	}
 
-	public long getCityId() {
-		return cityId;
+	public City getCity() {
+		return city;
 	}
 
-	public void setCityId(long cityId) {
-		this.cityId = cityId;
+	public void setCity(City city) {
+		this.city = city;
 	}
 }
