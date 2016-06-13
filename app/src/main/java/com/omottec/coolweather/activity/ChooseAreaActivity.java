@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Looper;
 import android.preference.PreferenceManager;
 import android.text.TextUtils;
 import android.util.Log;
@@ -113,6 +114,8 @@ public class ChooseAreaActivity extends Activity {
 		mListener = new Response.Listener<String>() {
 			@Override
 			public void onResponse(String response) {
+				Logger.d(TAG, "onResponse in ui thread:"
+						+ (Looper.myLooper() == Looper.getMainLooper()));
 				boolean result = false;
 				if ("province".equals(mType)) {
 					result = Utility.handleProvincesResponse(response);
@@ -237,6 +240,8 @@ public class ChooseAreaActivity extends Activity {
 		StringRequest request = new StringRequest(Request.Method.GET, address, mListener, mErrorListener) {
 			@Override
 			protected Response<String> parseNetworkResponse(NetworkResponse response) {
+				Logger.d(TAG, "parseNetworkResponse in ui thread:"
+						+ (Looper.myLooper() == Looper.getMainLooper()));
 				try {
 					String contentType = response.headers.get("Content-Type");
 					Logger.d(TAG, "contentType:" + contentType);
