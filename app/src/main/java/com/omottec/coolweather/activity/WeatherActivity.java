@@ -18,8 +18,11 @@ import com.android.volley.Request;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
+import com.google.gson.Gson;
 import com.omottec.coolweather.R;
 import com.omottec.coolweather.log.Logger;
+import com.omottec.coolweather.model.Province;
+import com.omottec.coolweather.model.WeatherInfo;
 import com.omottec.coolweather.net.HttpManager;
 import com.omottec.coolweather.service.AutoUpdateService;
 import com.omottec.coolweather.util.HttpCallbackListener;
@@ -195,16 +198,29 @@ public class WeatherActivity extends Activity implements OnClickListener{
 	 */
 	private void showWeather() {
 		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+		String response = prefs.getString("response", null);
+		try {
+			WeatherInfo weatherInfo = new Gson().fromJson(response, WeatherInfo.class);
+			cityNameText.setText(weatherInfo.getCity());
+			temp1Text.setText(weatherInfo.getTemp1());
+			temp2Text.setText(weatherInfo.getTemp2());
+			weatherDespText.setText(weatherInfo.getWeather());
+			publishText.setText(weatherInfo.getPtime());
+			weatherInfoLayout.setVisibility(View.VISIBLE);
+			cityNameText.setVisibility(View.VISIBLE);
+			Intent intent = new Intent(this, AutoUpdateService.class);
+			startService(intent);
+		} catch (Exception e) {
+			e.printStackTrace();
+			fileList();
+		}
 		cityNameText.setText( prefs.getString("city_name", ""));
 		temp1Text.setText(prefs.getString("temp1", ""));
 		temp2Text.setText(prefs.getString("temp2", ""));
 		weatherDespText.setText(prefs.getString("weather_desp", ""));
 		publishText.setText("今天" + prefs.getString("publish_time", "") + "发布");
 		currentDateText.setText(prefs.getString("current_date", ""));
-		weatherInfoLayout.setVisibility(View.VISIBLE);
-		cityNameText.setVisibility(View.VISIBLE);
-		Intent intent = new Intent(this, AutoUpdateService.class);
-		startService(intent);
+
 	}
 
 }
