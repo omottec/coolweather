@@ -43,50 +43,23 @@ public class ChooseAreaActivity extends Activity {
 	public static final int LEVEL_CITY = 1;
 	public static final int LEVEL_COUNTY = 2;
 	
-	private ProgressDialog progressDialog;
-	private TextView titleText;
-	private ListView listView;
-	private ArrayAdapter<String> adapter;
-	private List<String> dataList = new ArrayList<String>();
-	/**
-	 * 省列表
-	 */
-	private List<Province> provinceList;
-	/**
-	 * 市列表
-	 */
-	private List<City> cityList;
-	/**
-	 * 县列表
-	 */
-	private List<County> countyList;
-	/**
-	 * 选中的省份
-	 */
-	private Province selectedProvince;
-	/**
-	 * 选中的城市
-	 */
-	private City selectedCity;
-	/**
-	 * 当前选中的级别
-	 */
+	private ProgressDialog mDialog;
+	private TextView mTitleTv;
+	private ListView mListView;
+
+    private boolean isFromWeatherActivity;
+	private ArrayAdapter<String> mAdapter;
+	private List<String> mDataList = new ArrayList<String>();
+	private List<Province> mProvinceList;
+	private List<City> mCityList;
+	private List<County> mCountyList;
+	private Province mSelectedProvince;
+	private City mSelectedCity;
 	private int currentLevel = LEVEL_PROVINCE;
-	/**
-	 * 是否从WeatherActivity中跳转过来。
-	 */
-	private boolean isFromWeatherActivity;
-
 	private Response.Listener<String> mListener;
-
 	private Response.ErrorListener mErrorListener;
-
 	private WeatherParser mParser = new WeatherParser();
-
 	private ExecutorService mExecutor = Executors.newCachedThreadPool();
-
-	private String mType;
-
 
 	@Override
 	public void onAttachedToWindow() {
@@ -108,23 +81,23 @@ public class ChooseAreaActivity extends Activity {
 		}
 		requestWindowFeature(Window.FEATURE_NO_TITLE);
 		setContentView(R.layout.choose_area);
-		listView = (ListView) findViewById(R.id.list_view);
-		titleText = (TextView) findViewById(R.id.title_text);
-		adapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, dataList);
-		listView.setAdapter(adapter);
+		mListView = (ListView) findViewById(R.id.list_view);
+		mTitleTv = (TextView) findViewById(R.id.title_text);
+		mAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, mDataList);
+		mListView.setAdapter(mAdapter);
 		mListener = new Response.Listener<String>() {
 			@Override
 			public void onResponse(String response) {
                 switch (currentLevel) {
                     case LEVEL_COUNTY:
-                        List<County> counties = mParser.parseCounties(response, selectedCity);
+                        List<County> counties = mParser.parseCounties(response, mSelectedCity);
                         if (counties != null && counties.isEmpty()) {
                             updateCountyUi(counties);
                             insert2Db(counties);
                         }
                         break;
                     case LEVEL_CITY:
-                        List<City> cities = mParser.parseCities(response, selectedProvince);
+                        List<City> cities = mParser.parseCities(response, mSelectedProvince);
                         if (cities != null && !cities.isEmpty()) {
                             updateCityUi(cities);
                             insert2Db(cities);
@@ -151,18 +124,18 @@ public class ChooseAreaActivity extends Activity {
 			}
 		};
 
-		listView.setOnItemClickListener(new OnItemClickListener() {
+		mListView.setOnItemClickListener(new OnItemClickListener() {
 			@Override
 			public void onItemClick(AdapterView<?> arg0, View view, int index,
 					long arg3) {
 				if (currentLevel == LEVEL_PROVINCE) {
-					selectedProvince = provinceList.get(index);
+					mSelectedProvince = mProvinceList.get(index);
 					queryCities();
 				} else if (currentLevel == LEVEL_CITY) {
-					selectedCity = cityList.get(index);
+					mSelectedCity = mCityList.get(index);
 					queryCounties();
 				} else if (currentLevel == LEVEL_COUNTY) {
-					String countyCode = countyList.get(index).getCode();
+					String countyCode = mCountyList.get(index).getCode();
 					Intent intent = new Intent(ChooseAreaActivity.this, WeatherActivity.class);
 					intent.putExtra("county_code", countyCode);
 					startActivity(intent);
@@ -194,13 +167,13 @@ public class ChooseAreaActivity extends Activity {
 	}
 
 	private void updateProvinceUi(List<Province> provinces) {
-		provinceList = provinces;
-		dataList.clear();
-		for (Province province : provinceList)
-			dataList.add(province.getName());
-		adapter.notifyDataSetChanged();
-		listView.setSelection(0);
-		titleText.setText("中国");
+		mProvinceList = provinces;
+		mDataList.clear();
+		for (Province province : mProvinceList)
+			mDataList.add(province.getName());
+		mAdapter.notifyDataSetChanged();
+		mListView.setSelection(0);
+		mTitleTv.setText("中国");
 		currentLevel = LEVEL_PROVINCE;
 		closeProgressDialog();
 	}
@@ -222,7 +195,7 @@ public class ChooseAreaActivity extends Activity {
 
 			@Override
 			protected List<City> doInBackground(Void... params) {
-				return selectedProvince.getCities();
+				return mSelectedProvince.getCities();
 			}
 
 			@Override
@@ -230,21 +203,21 @@ public class ChooseAreaActivity extends Activity {
 				if (cities != null && !cities.isEmpty()) {
                     updateCityUi(cities);
 				} else {
-					queryFromServer(selectedProvince.getCode());
+					queryFromServer(mSelectedProvince.getCode());
 				}
 			}
 		}.execute();
 	}
 
 	private void updateCityUi(List<City> cities) {
-		cityList = cities;
-		dataList.clear();
-		for (City city : cityList) {
-			dataList.add(city.getName());
+		mCityList = cities;
+		mDataList.clear();
+		for (City city : mCityList) {
+			mDataList.add(city.getName());
 		}
-		adapter.notifyDataSetChanged();
-		listView.setSelection(0);
-		titleText.setText(selectedProvince.getName());
+		mAdapter.notifyDataSetChanged();
+		mListView.setSelection(0);
+		mTitleTv.setText(mSelectedProvince.getName());
 		currentLevel = LEVEL_CITY;
 		closeProgressDialog();
 	}
@@ -255,28 +228,28 @@ public class ChooseAreaActivity extends Activity {
 
 			@Override
 			protected List<County> doInBackground(Void... params) {
-				return selectedCity.getCounties();
+				return mSelectedCity.getCounties();
 			}
 
 			@Override
 			protected void onPostExecute(List<County> counties) {
 				if (counties != null && !counties.isEmpty()) {
-
+                    updateCountyUi(counties);
 				} else {
-					queryFromServer(selectedCity.getCode());
+					queryFromServer(mSelectedCity.getCode());
 				}
 			}
 		}.execute();
 	}
 
 	private void updateCountyUi(List<County> counties) {
-		countyList = counties;
-		dataList.clear();
-		for (County county : countyList)
-			dataList.add(county.getName());
-		adapter.notifyDataSetChanged();
-		listView.setSelection(0);
-		titleText.setText(selectedCity.getName());
+		mCountyList = counties;
+		mDataList.clear();
+		for (County county : mCountyList)
+			mDataList.add(county.getName());
+		mAdapter.notifyDataSetChanged();
+		mListView.setSelection(0);
+		mTitleTv.setText(mSelectedCity.getName());
 		currentLevel = LEVEL_COUNTY;
 		closeProgressDialog();
 	}
@@ -315,20 +288,20 @@ public class ChooseAreaActivity extends Activity {
 	 * 显示进度对话框
 	 */
 	private void showProgressDialog() {
-		if (progressDialog == null) {
-			progressDialog = new ProgressDialog(this);
-			progressDialog.setMessage("正在加载...");
-			progressDialog.setCanceledOnTouchOutside(false);
+		if (mDialog == null) {
+			mDialog = new ProgressDialog(this);
+			mDialog.setMessage("正在加载...");
+			mDialog.setCanceledOnTouchOutside(false);
 		}
-		progressDialog.show();
+		mDialog.show();
 	}
 	
 	/**
 	 * 关闭进度对话框
 	 */
 	private void closeProgressDialog() {
-		if (progressDialog != null) {
-			progressDialog.dismiss();
+		if (mDialog != null) {
+			mDialog.dismiss();
 		}
 	}
 	
