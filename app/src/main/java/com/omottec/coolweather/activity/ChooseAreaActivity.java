@@ -55,7 +55,8 @@ public class ChooseAreaActivity extends Activity {
 	private List<County> mCountyList;
 	private Province mSelectedProvince;
 	private City mSelectedCity;
-	private int currentLevel = LEVEL_PROVINCE;
+	private int mUiLevel = LEVEL_PROVINCE;
+    private int mQueryLevel;
 	private Response.Listener<String> mListener;
 	private Response.ErrorListener mErrorListener;
 	private WeatherParser mParser = new WeatherParser();
@@ -88,10 +89,10 @@ public class ChooseAreaActivity extends Activity {
 		mListener = new Response.Listener<String>() {
 			@Override
 			public void onResponse(String response) {
-                switch (currentLevel) {
+                switch (mQueryLevel) {
                     case LEVEL_COUNTY:
                         List<County> counties = mParser.parseCounties(response, mSelectedCity);
-                        if (counties != null && counties.isEmpty()) {
+                        if (counties != null && !counties.isEmpty()) {
                             updateCountyUi(counties);
                             insert2Db(counties);
                         }
@@ -104,7 +105,6 @@ public class ChooseAreaActivity extends Activity {
                         }
                         break;
                     case LEVEL_PROVINCE:
-                    default:
                         List<Province> provinces = mParser.parseProvinces(response);
                         if (provinces != null && !provinces.isEmpty()) {
                             updateProvinceUi(provinces);
@@ -128,19 +128,23 @@ public class ChooseAreaActivity extends Activity {
 			@Override
 			public void onItemClick(AdapterView<?> arg0, View view, int index,
 					long arg3) {
-				if (currentLevel == LEVEL_PROVINCE) {
-					mSelectedProvince = mProvinceList.get(index);
-					queryCities();
-				} else if (currentLevel == LEVEL_CITY) {
-					mSelectedCity = mCityList.get(index);
-					queryCounties();
-				} else if (currentLevel == LEVEL_COUNTY) {
-					String countyCode = mCountyList.get(index).getCode();
-					Intent intent = new Intent(ChooseAreaActivity.this, WeatherActivity.class);
-					intent.putExtra("county_code", countyCode);
-					startActivity(intent);
-					finish();
-				}
+                switch (mUiLevel) {
+                    case LEVEL_COUNTY:
+                        String countyCode = mCountyList.get(index).getCode();
+                        Intent intent = new Intent(ChooseAreaActivity.this, WeatherActivity.class);
+                        intent.putExtra("county_code", countyCode);
+                        startActivity(intent);
+                        finish();
+                        break;
+                    case LEVEL_CITY:
+                        mSelectedCity = mCityList.get(index);
+                        queryCounties();
+                        break;
+                    case LEVEL_PROVINCE:
+                        mSelectedProvince = mProvinceList.get(index);
+                        queryCities();
+                        break;
+                }
 			}
 		});
 		queryProvinces();  // 加载省级数据
@@ -160,7 +164,7 @@ public class ChooseAreaActivity extends Activity {
 				if (provinces != null && !provinces.isEmpty()) {
                     updateProvinceUi(provinces);
 				} else {
-					queryFromServer(null);
+					queryFromServer(null, LEVEL_PROVINCE);
 				}
 			}
 		}.execute();
@@ -174,7 +178,7 @@ public class ChooseAreaActivity extends Activity {
 		mAdapter.notifyDataSetChanged();
 		mListView.setSelection(0);
 		mTitleTv.setText("中国");
-		currentLevel = LEVEL_PROVINCE;
+		mUiLevel = LEVEL_PROVINCE;
 		closeProgressDialog();
 	}
 
@@ -203,7 +207,7 @@ public class ChooseAreaActivity extends Activity {
 				if (cities != null && !cities.isEmpty()) {
                     updateCityUi(cities);
 				} else {
-					queryFromServer(mSelectedProvince.getCode());
+					queryFromServer(mSelectedProvince.getCode(), LEVEL_CITY);
 				}
 			}
 		}.execute();
@@ -218,7 +222,7 @@ public class ChooseAreaActivity extends Activity {
 		mAdapter.notifyDataSetChanged();
 		mListView.setSelection(0);
 		mTitleTv.setText(mSelectedProvince.getName());
-		currentLevel = LEVEL_CITY;
+		mUiLevel = LEVEL_CITY;
 		closeProgressDialog();
 	}
 	
@@ -236,7 +240,7 @@ public class ChooseAreaActivity extends Activity {
 				if (counties != null && !counties.isEmpty()) {
                     updateCountyUi(counties);
 				} else {
-					queryFromServer(mSelectedCity.getCode());
+					queryFromServer(mSelectedCity.getCode(), LEVEL_COUNTY);
 				}
 			}
 		}.execute();
@@ -250,11 +254,12 @@ public class ChooseAreaActivity extends Activity {
 		mAdapter.notifyDataSetChanged();
 		mListView.setSelection(0);
 		mTitleTv.setText(mSelectedCity.getName());
-		currentLevel = LEVEL_COUNTY;
+		mUiLevel = LEVEL_COUNTY;
 		closeProgressDialog();
 	}
 
-	private void queryFromServer(String code) {
+	private void queryFromServer(String code, int queryLevel) {
+        mQueryLevel = queryLevel;
 		String url;
 		if (!TextUtils.isEmpty(code))
 			url = "http://www.weather.com.cn/data/list3/city" + code + ".xml";
@@ -281,6 +286,7 @@ public class ChooseAreaActivity extends Activity {
 				return super.parseNetworkResponse(response);
 			}
 		};
+        request.setShouldCache(false);
 		HttpManager.getRequestQueue().add(request);
 	}
 	
@@ -305,14 +311,11 @@ public class ChooseAreaActivity extends Activity {
 		}
 	}
 	
-	/**
-	 * 捕获Back按键，根据当前的级别来判断，此时应该返回市列表、省列表、还是直接退出。
-	 */
 	@Override
 	public void onBackPressed() {
-		if (currentLevel == LEVEL_COUNTY) {
+		if (mUiLevel == LEVEL_COUNTY) {
 			queryCities();
-		} else if (currentLevel == LEVEL_CITY) {
+		} else if (mUiLevel == LEVEL_CITY) {
 			queryProvinces();
 		} else {
 			if (isFromWeatherActivity) {
