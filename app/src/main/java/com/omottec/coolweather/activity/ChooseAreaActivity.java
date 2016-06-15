@@ -1,12 +1,12 @@
 package com.omottec.coolweather.activity;
 
-import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.support.v4.app.FragmentActivity;
 import android.text.TextUtils;
 import android.view.View;
 import android.view.Window;
@@ -37,7 +37,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class ChooseAreaActivity extends Activity {
+public class ChooseAreaActivity extends FragmentActivity {
 	public static final String TAG = "ChooseAreaActivity";
 	public static final int LEVEL_PROVINCE = 0;
 	public static final int LEVEL_CITY = 1;
@@ -74,16 +74,16 @@ public class ChooseAreaActivity extends Activity {
 		Logger.logClassAndMethod(this);
 		isFromWeatherActivity = getIntent().getBooleanExtra("from_weather_activity", false);
 		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-		if (prefs.getBoolean("city_selected", false) && !isFromWeatherActivity) {
+		if (prefs.getBoolean(WeatherActivity.COUNTY_SELECTED, false) && !isFromWeatherActivity) {
 			Intent intent = new Intent(this, WeatherActivity.class);
 			startActivity(intent);
 			finish();
 			return;
 		}
 		requestWindowFeature(Window.FEATURE_NO_TITLE);
-		setContentView(R.layout.choose_area);
+		setContentView(R.layout.a_choose_area);
 		mListView = (ListView) findViewById(R.id.list_view);
-		mTitleTv = (TextView) findViewById(R.id.title_text);
+		mTitleTv = (TextView) findViewById(R.id.title_tv);
 		mAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, mDataList);
 		mListView.setAdapter(mAdapter);
 		mListener = new Response.Listener<String>() {
@@ -132,7 +132,7 @@ public class ChooseAreaActivity extends Activity {
                     case LEVEL_COUNTY:
                         String countyCode = mCountyList.get(index).getCode();
                         Intent intent = new Intent(ChooseAreaActivity.this, WeatherActivity.class);
-                        intent.putExtra("county_code", countyCode);
+                        intent.putExtra(WeatherActivity.COUNTY_CODE, countyCode);
                         startActivity(intent);
                         finish();
                         break;

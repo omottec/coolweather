@@ -6,11 +6,13 @@
 
     <RelativeLayout
         android:layout_width="match_parent"
-        android:layout_height="50dp"
+        android:layout_height="wrap_content"
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp"
         android:background="#484E61" >
 
         <Button
-            android:id="@+id/switch_city"
+            android:id="@+id/switch_city_btn"
             android:layout_width="30dp"
             android:layout_height="30dp"
             android:layout_centerVertical="true"
@@ -18,7 +20,7 @@
             android:background="@drawable/home" />
 
         <TextView
-            android:id="@+id/city_name"
+            android:id="@+id/city_name_tv"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerInParent="true"
@@ -26,7 +28,7 @@
             android:textSize="24sp" />
 
         <Button
-            android:id="@+id/refresh_weather"
+            android:id="@+id/refresh_weather_tv"
             android:layout_width="30dp"
             android:layout_height="30dp"
             android:layout_alignParentRight="true"
@@ -42,7 +44,7 @@
         android:background="#27A5F9" >
 
         <TextView
-            android:id="@+id/publish_text"
+            android:id="@+id/publish_tv"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_alignParentRight="true"
@@ -52,24 +54,24 @@
             android:textSize="18sp" />
 
         <LinearLayout
-            android:id="@+id/weather_info_layout"
+            android:id="@+id/weather_info_ll"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerInParent="true"
             android:orientation="vertical" >
 
             <TextView
-                android:id="@+id/current_date"
+                android:id="@+id/current_date_tv"
                 android:layout_width="wrap_content"
-                android:layout_height="40dp"
+                android:layout_height="wrap_content"
                 android:gravity="center"
                 android:textColor="#FFF"
                 android:textSize="18sp" />
 
             <TextView
-                android:id="@+id/weather_desp"
+                android:id="@+id/weather_desc_tv"
                 android:layout_width="wrap_content"
-                android:layout_height="60dp"
+                android:layout_height="wrap_content"
                 android:layout_gravity="center_horizontal"
                 android:gravity="center"
                 android:textColor="#FFF"
@@ -77,12 +79,14 @@
 
             <LinearLayout
                 android:layout_width="wrap_content"
-                android:layout_height="60dp"
+                android:layout_height="wrap_content"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp"
                 android:layout_gravity="center_horizontal"
                 android:orientation="horizontal" >
 
                 <TextView
-                    android:id="@+id/temp1"
+                    android:id="@+id/temp1_tv"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_vertical"
@@ -100,7 +104,7 @@
                     android:textSize="40sp" />
 
                 <TextView
-                    android:id="@+id/temp2"
+                    android:id="@+id/temp2_tv"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_vertical"
