@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Looper;
@@ -32,8 +33,6 @@ import com.omottec.coolweather.model.County;
 import com.omottec.coolweather.model.Province;
 import com.omottec.coolweather.net.HttpManager;
 import com.omottec.coolweather.util.Utility;
-
-//import org.apache.http.protocol.HTTP;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -95,8 +94,6 @@ public class ChooseAreaActivity extends Activity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		Logger.logClassAndMethod(this);
-		Logger.d(TAG, "sdkVersion=" + Build.VERSION.SDK_INT + ", local=" + Locale.getDefault());
-		Log.d(TAG, "sdkVersion=" + Build.VERSION.SDK_INT + ", local=" + Locale.getDefault());
 		isFromWeatherActivity = getIntent().getBooleanExtra("from_weather_activity", false);
 		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
 		if (prefs.getBoolean("city_selected", false) && !isFromWeatherActivity) {
@@ -144,7 +141,6 @@ public class ChooseAreaActivity extends Activity {
 						"加载失败", Toast.LENGTH_SHORT).show();
 			}
 		};
-//		coolWeatherDB = CoolWeatherDB.getInstance(this);
 		listView.setOnItemClickListener(new OnItemClickListener() {
 			@Override
 			public void onItemClick(AdapterView<?> arg0, View view, int index,
@@ -167,63 +163,94 @@ public class ChooseAreaActivity extends Activity {
 		queryProvinces();  // 加载省级数据
 	}
 
-	/**
-	 * 查询全国所有的省，优先从数据库查询，如果没有查询到再去服务器上查询。
-	 */
 	private void queryProvinces() {
-		provinceList = new Select().from(Province.class).execute();
-//		provinceList = coolWeatherDB.loadProvinces();
-		if (provinceList.size() > 0) {
-			dataList.clear();
-			for (Province province : provinceList) {
-				dataList.add(province.getName());
+        showProgressDialog();
+		new AsyncTask<Void, Void, List<Province>>() {
+
+			@Override
+			protected List<Province> doInBackground(Void... params) {
+				return new Select().from(Province.class).execute();
 			}
-			adapter.notifyDataSetChanged();
-			listView.setSelection(0);
-			titleText.setText("中国");
-			currentLevel = LEVEL_PROVINCE;
-		} else {
-			queryFromServer(null, "province");
-		}
+
+			@Override
+			protected void onPostExecute(List<Province> provinces) {
+				if (provinces != null && !provinces.isEmpty()) {
+                    provinceList = provinces;
+					dataList.clear();
+					for (Province province : provinceList) {
+						dataList.add(province.getName());
+					}
+					adapter.notifyDataSetChanged();
+					listView.setSelection(0);
+					titleText.setText("中国");
+					currentLevel = LEVEL_PROVINCE;
+                    closeProgressDialog();
+				} else {
+					queryFromServer(null, "province");
+				}
+			}
+		}.execute();
 	}
 
-	/**
-	 * 查询选中省内所有的市，优先从数据库查询，如果没有查询到再去服务器上查询。
-	 */
 	private void queryCities() {
-		if (selectedProvince != null)
-			cityList = selectedProvince.getCities();
-		if (cityList.size() > 0) {
-			dataList.clear();
-			for (City city : cityList) {
-				dataList.add(city.getName());
+        showProgressDialog();
+		new AsyncTask<Void, Void, List<City>>() {
+
+			@Override
+			protected List<City> doInBackground(Void... params) {
+				return selectedProvince.getCities();
 			}
-			adapter.notifyDataSetChanged();
-			listView.setSelection(0);
-			titleText.setText(selectedProvince.getName());
-			currentLevel = LEVEL_CITY;
-		} else {
-			queryFromServer(selectedProvince.getCode(), "city");
-		}
+
+			@Override
+			protected void onPostExecute(List<City> cities) {
+				if (cities != null && !cities.isEmpty()) {
+                    cityList = cities;
+					dataList.clear();
+					for (City city : cityList) {
+						dataList.add(city.getName());
+					}
+					adapter.notifyDataSetChanged();
+					listView.setSelection(0);
+					titleText.setText(selectedProvince.getName());
+					currentLevel = LEVEL_CITY;
+                    closeProgressDialog();
+				} else {
+					queryFromServer(selectedProvince.getCode(), "city");
+				}
+			}
+		}.execute();
 	}
 	
 	/**
 	 * 查询选中市内所有的县，优先从数据库查询，如果没有查询到再去服务器上查询。
 	 */
 	private void queryCounties() {
-		countyList = new Select().from(County.class).execute();
-		if (countyList.size() > 0) {
-			dataList.clear();
-			for (County county : countyList) {
-				dataList.add(county.getName());
+        showProgressDialog();
+		new AsyncTask<Void, Void, List<County>>() {
+
+			@Override
+			protected List<County> doInBackground(Void... params) {
+				return selectedCity.getCounties();
 			}
-			adapter.notifyDataSetChanged();
-			listView.setSelection(0);
-			titleText.setText(selectedCity.getName());
-			currentLevel = LEVEL_COUNTY;
-		} else {
-			queryFromServer(selectedCity.getCode(), "county");
-		}
+
+			@Override
+			protected void onPostExecute(List<County> counties) {
+				if (counties != null && !counties.isEmpty()) {
+                    countyList = counties;
+					dataList.clear();
+					for (County county : countyList) {
+						dataList.add(county.getName());
+					}
+					adapter.notifyDataSetChanged();
+					listView.setSelection(0);
+					titleText.setText(selectedCity.getName());
+					currentLevel = LEVEL_COUNTY;
+                    closeProgressDialog();
+				} else {
+					queryFromServer(selectedCity.getCode(), "county");
+				}
+			}
+		}.execute();
 	}
 	
 	/**
@@ -237,7 +264,7 @@ public class ChooseAreaActivity extends Activity {
 		} else {
 			address = "http://www.weather.com.cn/data/list3/city.xml";
 		}
-		showProgressDialog();
+
 		StringRequest request = new StringRequest(Request.Method.GET, address, mListener, mErrorListener) {
 			@Override
 			protected Response<String> parseNetworkResponse(NetworkResponse response) {

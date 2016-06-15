@@ -8,13 +8,7 @@ import org.json.JSONObject;
  * Created by qinbingbing on 6/14/16.
  */
 public class WeatherInfo {
-    /*JSONObject weatherInfo = jsonObject.getJSONObject("weatherinfo");
-    String cityName = weatherInfo.getString("city");
-    String weatherCode = weatherInfo.getString("cityid");
-    String temp1 = weatherInfo.getString("temp1");
-    String temp2 = weatherInfo.getString("temp2");
-    String weatherDesp = weatherInfo.getString("weather");
-    String publishTime = weatherInfo.getString("ptime");*/
+
     @SerializedName("city")
     private String city;
 
