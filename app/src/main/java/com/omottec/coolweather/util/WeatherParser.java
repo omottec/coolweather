@@ -25,6 +25,7 @@ public final class WeatherParser {
                     province = new Province();
                     province.setCode(array[0]);
                     province.setName(array[1]);
+                    provinces.add(province);
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -46,6 +47,7 @@ public final class WeatherParser {
                     city.setCode(array[0]);
                     city.setName(array[1]);
                     city.setProvince(province);
+                    cities.add(city);
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -67,6 +69,7 @@ public final class WeatherParser {
                     county.setCode(array[0]);
                     county.setName(array[1]);
                     county.setCity(city);
+                    counties.add(county);
                 }
             } catch (Exception e) {
                 e.printStackTrace();

@@ -5,12 +5,9 @@ import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.AsyncTask;
-import android.os.Build;
 import android.os.Bundle;
-import android.os.Looper;
 import android.preference.PreferenceManager;
 import android.text.TextUtils;
-import android.util.Log;
 import android.view.View;
 import android.view.Window;
 import android.widget.AdapterView;
@@ -20,6 +17,7 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.activeandroid.Model;
 import com.activeandroid.query.Select;
 import com.android.volley.NetworkResponse;
 import com.android.volley.Request;
@@ -32,11 +30,12 @@ import com.omottec.coolweather.model.City;
 import com.omottec.coolweather.model.County;
 import com.omottec.coolweather.model.Province;
 import com.omottec.coolweather.net.HttpManager;
-import com.omottec.coolweather.util.Utility;
+import com.omottec.coolweather.util.WeatherParser;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class ChooseAreaActivity extends Activity {
 	public static final String TAG = "ChooseAreaActivity";
@@ -72,7 +71,7 @@ public class ChooseAreaActivity extends Activity {
 	/**
 	 * 当前选中的级别
 	 */
-	private int currentLevel;
+	private int currentLevel = LEVEL_PROVINCE;
 	/**
 	 * 是否从WeatherActivity中跳转过来。
 	 */
@@ -82,7 +81,12 @@ public class ChooseAreaActivity extends Activity {
 
 	private Response.ErrorListener mErrorListener;
 
+	private WeatherParser mParser = new WeatherParser();
+
+	private ExecutorService mExecutor = Executors.newCachedThreadPool();
+
 	private String mType;
+
 
 	@Override
 	public void onAttachedToWindow() {
@@ -111,28 +115,33 @@ public class ChooseAreaActivity extends Activity {
 		mListener = new Response.Listener<String>() {
 			@Override
 			public void onResponse(String response) {
-				Logger.d(TAG, "onResponse in ui thread:"
-						+ (Looper.myLooper() == Looper.getMainLooper()));
-				boolean result = false;
-				if ("province".equals(mType)) {
-					result = Utility.handleProvincesResponse(response);
-				} else if ("city".equals(mType)) {
-					result = Utility.handleCitiesResponse(response, selectedProvince);
-				} else if ("county".equals(mType)) {
-					result = Utility.handleCountiesResponse(response, selectedCity);
-				}
-				if (result) {
-					closeProgressDialog();
-					if ("province".equals(mType)) {
-						queryProvinces();
-					} else if ("city".equals(mType)) {
-						queryCities();
-					} else if ("county".equals(mType)) {
-						queryCounties();
-					}
-				}
+                switch (currentLevel) {
+                    case LEVEL_COUNTY:
+                        List<County> counties = mParser.parseCounties(response, selectedCity);
+                        if (counties != null && counties.isEmpty()) {
+                            updateCountyUi(counties);
+                            insert2Db(counties);
+                        }
+                        break;
+                    case LEVEL_CITY:
+                        List<City> cities = mParser.parseCities(response, selectedProvince);
+                        if (cities != null && !cities.isEmpty()) {
+                            updateCityUi(cities);
+                            insert2Db(cities);
+                        }
+                        break;
+                    case LEVEL_PROVINCE:
+                    default:
+                        List<Province> provinces = mParser.parseProvinces(response);
+                        if (provinces != null && !provinces.isEmpty()) {
+                            updateProvinceUi(provinces);
+                            insert2Db(provinces);
+                        }
+                        break;
+                }
 			}
 		};
+
 		mErrorListener = new Response.ErrorListener() {
 			@Override
 			public void onErrorResponse(VolleyError error) {
@@ -141,6 +150,7 @@ public class ChooseAreaActivity extends Activity {
 						"加载失败", Toast.LENGTH_SHORT).show();
 			}
 		};
+
 		listView.setOnItemClickListener(new OnItemClickListener() {
 			@Override
 			public void onItemClick(AdapterView<?> arg0, View view, int index,
@@ -175,21 +185,35 @@ public class ChooseAreaActivity extends Activity {
 			@Override
 			protected void onPostExecute(List<Province> provinces) {
 				if (provinces != null && !provinces.isEmpty()) {
-                    provinceList = provinces;
-					dataList.clear();
-					for (Province province : provinceList) {
-						dataList.add(province.getName());
-					}
-					adapter.notifyDataSetChanged();
-					listView.setSelection(0);
-					titleText.setText("中国");
-					currentLevel = LEVEL_PROVINCE;
-                    closeProgressDialog();
+                    updateProvinceUi(provinces);
 				} else {
-					queryFromServer(null, "province");
+					queryFromServer(null);
 				}
 			}
 		}.execute();
+	}
+
+	private void updateProvinceUi(List<Province> provinces) {
+		provinceList = provinces;
+		dataList.clear();
+		for (Province province : provinceList)
+			dataList.add(province.getName());
+		adapter.notifyDataSetChanged();
+		listView.setSelection(0);
+		titleText.setText("中国");
+		currentLevel = LEVEL_PROVINCE;
+		closeProgressDialog();
+	}
+
+	private void insert2Db(final List<? extends Model> models) {
+		if (models == null || models.isEmpty()) return;
+		mExecutor.submit(new Runnable() {
+			@Override
+			public void run() {
+				for (Model m : models)
+					m.save();
+			}
+		});
 	}
 
 	private void queryCities() {
@@ -204,26 +228,27 @@ public class ChooseAreaActivity extends Activity {
 			@Override
 			protected void onPostExecute(List<City> cities) {
 				if (cities != null && !cities.isEmpty()) {
-                    cityList = cities;
-					dataList.clear();
-					for (City city : cityList) {
-						dataList.add(city.getName());
-					}
-					adapter.notifyDataSetChanged();
-					listView.setSelection(0);
-					titleText.setText(selectedProvince.getName());
-					currentLevel = LEVEL_CITY;
-                    closeProgressDialog();
+                    updateCityUi(cities);
 				} else {
-					queryFromServer(selectedProvince.getCode(), "city");
+					queryFromServer(selectedProvince.getCode());
 				}
 			}
 		}.execute();
 	}
+
+	private void updateCityUi(List<City> cities) {
+		cityList = cities;
+		dataList.clear();
+		for (City city : cityList) {
+			dataList.add(city.getName());
+		}
+		adapter.notifyDataSetChanged();
+		listView.setSelection(0);
+		titleText.setText(selectedProvince.getName());
+		currentLevel = LEVEL_CITY;
+		closeProgressDialog();
+	}
 	
-	/**
-	 * 查询选中市内所有的县，优先从数据库查询，如果没有查询到再去服务器上查询。
-	 */
 	private void queryCounties() {
         showProgressDialog();
 		new AsyncTask<Void, Void, List<County>>() {
@@ -236,40 +261,36 @@ public class ChooseAreaActivity extends Activity {
 			@Override
 			protected void onPostExecute(List<County> counties) {
 				if (counties != null && !counties.isEmpty()) {
-                    countyList = counties;
-					dataList.clear();
-					for (County county : countyList) {
-						dataList.add(county.getName());
-					}
-					adapter.notifyDataSetChanged();
-					listView.setSelection(0);
-					titleText.setText(selectedCity.getName());
-					currentLevel = LEVEL_COUNTY;
-                    closeProgressDialog();
+
 				} else {
-					queryFromServer(selectedCity.getCode(), "county");
+					queryFromServer(selectedCity.getCode());
 				}
 			}
 		}.execute();
 	}
-	
-	/**
-	 * 根据传入的代号和类型从服务器上查询省市县数据。
-	 */
-	private void queryFromServer(final String code, final String type) {
-		mType = type;
-		String address;
-		if (!TextUtils.isEmpty(code)) {
-			address = "http://www.weather.com.cn/data/list3/city" + code + ".xml";
-		} else {
-			address = "http://www.weather.com.cn/data/list3/city.xml";
-		}
 
-		StringRequest request = new StringRequest(Request.Method.GET, address, mListener, mErrorListener) {
+	private void updateCountyUi(List<County> counties) {
+		countyList = counties;
+		dataList.clear();
+		for (County county : countyList)
+			dataList.add(county.getName());
+		adapter.notifyDataSetChanged();
+		listView.setSelection(0);
+		titleText.setText(selectedCity.getName());
+		currentLevel = LEVEL_COUNTY;
+		closeProgressDialog();
+	}
+
+	private void queryFromServer(String code) {
+		String url;
+		if (!TextUtils.isEmpty(code))
+			url = "http://www.weather.com.cn/data/list3/city" + code + ".xml";
+		else
+			url = "http://www.weather.com.cn/data/list3/city.xml";
+
+		StringRequest request = new StringRequest(Request.Method.GET, url, mListener, mErrorListener) {
 			@Override
 			protected Response<String> parseNetworkResponse(NetworkResponse response) {
-				Logger.d(TAG, "parseNetworkResponse in ui thread:"
-						+ (Looper.myLooper() == Looper.getMainLooper()));
 				try {
 					String contentType = response.headers.get("Content-Type");
 					Logger.d(TAG, "contentType:" + contentType);
