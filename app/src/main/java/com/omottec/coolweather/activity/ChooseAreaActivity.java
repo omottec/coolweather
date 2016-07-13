@@ -19,23 +19,23 @@ import android.widget.Toast;
 
 import com.activeandroid.Model;
 import com.activeandroid.query.Select;
-import com.android.volley.NetworkResponse;
-import com.android.volley.Request;
-import com.android.volley.Response;
-import com.android.volley.VolleyError;
-import com.android.volley.toolbox.StringRequest;
 import com.omottec.coolweather.R;
 import com.omottec.coolweather.log.Logger;
 import com.omottec.coolweather.model.City;
 import com.omottec.coolweather.model.County;
 import com.omottec.coolweather.model.Province;
-import com.omottec.coolweather.net.HttpManager;
+import com.omottec.coolweather.net.LogInterceptor;
 import com.omottec.coolweather.util.WeatherParser;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.OkHttpClient;
 
 public class ChooseAreaActivity extends FragmentActivity {
 	public static final String TAG = "ChooseAreaActivity";
@@ -57,10 +57,66 @@ public class ChooseAreaActivity extends FragmentActivity {
 	private City mSelectedCity;
 	private int mUiLevel = LEVEL_PROVINCE;
     private int mQueryLevel;
-	private Response.Listener<String> mListener;
-	private Response.ErrorListener mErrorListener;
 	private WeatherParser mParser = new WeatherParser();
 	private ExecutorService mExecutor = Executors.newCachedThreadPool();
+    private final OkHttpClient mClient = new OkHttpClient.Builder()
+            .addInterceptor(new LogInterceptor())
+            .build();
+    private Callback mCallback = new Callback() {
+        @Override
+        public void onFailure(Call call, IOException e) {
+            e.printStackTrace();
+            closeProgressDialog();
+            Toast.makeText(ChooseAreaActivity.this,
+                    "加载失败", Toast.LENGTH_SHORT).show();
+        }
+
+        @Override
+        public void onResponse(Call call, okhttp3.Response response) throws IOException {
+            if (!response.isSuccessful() || response.body() == null) return;
+            switch (mQueryLevel) {
+                case LEVEL_COUNTY:
+                    final List<County> counties = mParser.parseCounties(response.body().string(), mSelectedCity);
+                    response.body().close();
+                    if (counties != null && !counties.isEmpty()) {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                updateCountyUi(counties);
+                            }
+                        });
+                        insert2Db(counties);
+                    }
+                    break;
+                case LEVEL_CITY:
+                    final List<City> cities = mParser.parseCities(response.body().string(), mSelectedProvince);
+                    response.body().close();
+                    if (cities != null && !cities.isEmpty()) {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                updateCityUi(cities);
+                            }
+                        });
+                        insert2Db(cities);
+                    }
+                    break;
+                case LEVEL_PROVINCE:
+                    final List<Province> provinces = mParser.parseProvinces(response.body().string());
+                    response.body().close();
+                    if (provinces != null && !provinces.isEmpty()) {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                updateProvinceUi(provinces);
+                            }
+                        });
+                        insert2Db(provinces);
+                    }
+                    break;
+            }
+        }
+    };
 
 	@Override
 	public void onAttachedToWindow() {
@@ -86,44 +142,6 @@ public class ChooseAreaActivity extends FragmentActivity {
 		mTitleTv = (TextView) findViewById(R.id.title_tv);
 		mAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, mDataList);
 		mListView.setAdapter(mAdapter);
-		mListener = new Response.Listener<String>() {
-			@Override
-			public void onResponse(String response) {
-                switch (mQueryLevel) {
-                    case LEVEL_COUNTY:
-                        List<County> counties = mParser.parseCounties(response, mSelectedCity);
-                        if (counties != null && !counties.isEmpty()) {
-                            updateCountyUi(counties);
-                            insert2Db(counties);
-                        }
-                        break;
-                    case LEVEL_CITY:
-                        List<City> cities = mParser.parseCities(response, mSelectedProvince);
-                        if (cities != null && !cities.isEmpty()) {
-                            updateCityUi(cities);
-                            insert2Db(cities);
-                        }
-                        break;
-                    case LEVEL_PROVINCE:
-                        List<Province> provinces = mParser.parseProvinces(response);
-                        if (provinces != null && !provinces.isEmpty()) {
-                            updateProvinceUi(provinces);
-                            insert2Db(provinces);
-                        }
-                        break;
-                }
-			}
-		};
-
-		mErrorListener = new Response.ErrorListener() {
-			@Override
-			public void onErrorResponse(VolleyError error) {
-				closeProgressDialog();
-				Toast.makeText(ChooseAreaActivity.this,
-						"加载失败", Toast.LENGTH_SHORT).show();
-			}
-		};
-
 		mListView.setOnItemClickListener(new OnItemClickListener() {
 			@Override
 			public void onItemClick(AdapterView<?> arg0, View view, int index,
@@ -265,29 +283,10 @@ public class ChooseAreaActivity extends FragmentActivity {
 			url = "http://www.weather.com.cn/data/list3/city" + code + ".xml";
 		else
 			url = "http://www.weather.com.cn/data/list3/city.xml";
-
-		StringRequest request = new StringRequest(Request.Method.GET, url, mListener, mErrorListener) {
-			@Override
-			protected Response<String> parseNetworkResponse(NetworkResponse response) {
-				try {
-					String contentType = response.headers.get("Content-Type");
-					Logger.d(TAG, "contentType:" + contentType);
-					if (TextUtils.isEmpty(contentType)) {
-						response.headers.put("Content-Type", "charset=UTF-8");
-					} else if (!contentType.contains("UTF-8")) {
-						StringBuilder sb = new StringBuilder(contentType)
-								.append("; charset=")
-								.append("UTF-8");
-						response.headers.put("Content-Type", sb.toString());
-					}
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-				return super.parseNetworkResponse(response);
-			}
-		};
-        request.setShouldCache(false);
-		HttpManager.getRequestQueue().add(request);
+        okhttp3.Request request = new okhttp3.Request.Builder()
+                .url(url)
+                .build();
+        mClient.newCall(request).enqueue(mCallback);
 	}
 	
 	/**

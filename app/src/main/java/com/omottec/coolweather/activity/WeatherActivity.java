@@ -13,15 +13,17 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-import com.android.volley.NetworkResponse;
-import com.android.volley.Request;
-import com.android.volley.Response;
-import com.android.volley.VolleyError;
-import com.android.volley.toolbox.StringRequest;
 import com.omottec.coolweather.R;
-import com.omottec.coolweather.net.HttpManager;
+import com.omottec.coolweather.net.LogInterceptor;
 
 import org.json.JSONObject;
+
+import java.io.IOException;
+
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
 
 
 public class WeatherActivity extends FragmentActivity implements OnClickListener{
@@ -42,11 +44,13 @@ public class WeatherActivity extends FragmentActivity implements OnClickListener
 	private TextView currentDateText;
 	private Button mSwitchCityBtn;
 	private Button mRefreshWeatherBtn;
-	private Response.Listener<String> mListener;
-	private Response.ErrorListener mErrorListener;
 	private String mCodeType;
     private String mCountyCode;
     private String mWeatherCode;
+	private final OkHttpClient mClient = new OkHttpClient.Builder()
+			.addInterceptor(new LogInterceptor())
+			.build();
+	private Callback mCallback;
 
     @Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -55,31 +59,40 @@ public class WeatherActivity extends FragmentActivity implements OnClickListener
 		setContentView(R.layout.a_weather);
 		initViews();
 		mCountyCode = getIntent().getStringExtra(COUNTY_CODE);
-		mListener = new Response.Listener<String>() {
+		mCallback = new Callback() {
 			@Override
-			public void onResponse(String response) {
-				if (TextUtils.isEmpty(response)) return;
+			public void onFailure(Call call, IOException e) {
+				runOnUiThread(new Runnable() {
+					@Override
+					public void run() {
+						mPublishTv.setText(R.string.sync_failed);
+					}
+				});
+			}
+
+			@Override
+			public void onResponse(Call call, final okhttp3.Response response) throws IOException {
+				if (!response.isSuccessful()) return;
+				final String responseStr = response.body().string();
+				response.close();
 				switch (mCodeType) {
 					case COUNTY_CODE:
 						// 从服务器返回的数据中解析出天气代号
-						String[] array = response.split("\\|");
+						String[] array = responseStr.split("\\|");
 						if (array.length == 2) {
 							mWeatherCode = array[1];
 							queryWeatherInfo(mWeatherCode);
 						}
 						break;
 					case WEATHER_CODE:
-						showWeather(response);
-						SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(WeatherActivity.this);
-
+						runOnUiThread(new Runnable() {
+							@Override
+							public void run() {
+								showWeather(responseStr);
+							}
+						});
 						break;
 				}
-			}
-		};
-		mErrorListener = new Response.ErrorListener() {
-			@Override
-			public void onErrorResponse(VolleyError error) {
-				mPublishTv.setText(R.string.sync_failed);
 			}
 		};
 		if (!TextUtils.isEmpty(mCountyCode)) {
@@ -150,31 +163,10 @@ public class WeatherActivity extends FragmentActivity implements OnClickListener
 	 */
 	private void queryFromServer(String url, String codeType) {
 		mCodeType = codeType;
-		Request request = new StringRequest(
-				Request.Method.GET,
-				url,
-				mListener,
-				mErrorListener) {
-			@Override
-			protected Response<String> parseNetworkResponse(NetworkResponse response) {
-				try {
-					String contentType = response.headers.get("Content-Type");
-					if (TextUtils.isEmpty(contentType)) {
-						response.headers.put("Content-Type", "charset=UTF-8");
-					} else if (!contentType.contains("UTF-8")) {
-						StringBuilder sb = new StringBuilder(contentType)
-								.append("; charset=")
-								.append("UTF-8");
-						response.headers.put("Content-Type", sb.toString());
-					}
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-				return super.parseNetworkResponse(response);
-			}
-		};
-        request.setShouldCache(false);
-		HttpManager.getRequestQueue().add(request);
+		Request request = new Request.Builder()
+				.url(url)
+				.build();
+		mClient.newCall(request).enqueue(mCallback);
 	}
 	
 	private void showWeather(String weatherInfoStr) {
