@@ -286,7 +286,7 @@ public class ChooseAreaActivity extends FragmentActivity {
 			url = "http://www.weather.com.cn/data/list3/city.xml";
         okhttp3.Request request = new okhttp3.Request.Builder()
                 .url(url)
-                .cacheControl(new CacheControl.Builder().noStore().build())
+                .cacheControl(CacheControl.FORCE_NETWORK)
                 .build();
         mClient.newCall(request).enqueue(mCallback);
 	}

@@ -166,7 +166,7 @@ public class WeatherActivity extends FragmentActivity implements OnClickListener
 		mCodeType = codeType;
 		Request request = new Request.Builder()
 				.url(url)
-				.cacheControl(new CacheControl.Builder().noStore().build())
+				.cacheControl(CacheControl.FORCE_NETWORK)
 				.build();
 		mClient.newCall(request).enqueue(mCallback);
 	}
