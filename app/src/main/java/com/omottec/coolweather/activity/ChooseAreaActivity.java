@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import okhttp3.CacheControl;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.OkHttpClient;
@@ -285,6 +286,7 @@ public class ChooseAreaActivity extends FragmentActivity {
 			url = "http://www.weather.com.cn/data/list3/city.xml";
         okhttp3.Request request = new okhttp3.Request.Builder()
                 .url(url)
+                .cacheControl(new CacheControl.Builder().noStore().build())
                 .build();
         mClient.newCall(request).enqueue(mCallback);
 	}
